@@ -243,7 +243,7 @@ async fn main() {
         #[cfg(feature = "web")]
         password: args.password.unwrap_or_else(|| "admin".into()),
     };
-    let rsa = match RsaCipher::new(root_path) {
+    let rsa = match RsaCipher::new(PathBuf::from("/etc/vnts")) {
         Ok(rsa) => {
             println!("密钥指纹: {}", rsa.finger());
             Some(rsa)
