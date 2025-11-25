@@ -17,9 +17,9 @@ jobs:
   #  test:
   #    runs-on: ubuntu-latest
   #    steps:
-  #      - uses: actions/checkout@v2
+  #      - uses: actions/checkout@v4
   #      - name: Cargo cache
-  #        uses: actions/cache@v2
+  #        uses: actions/cache@v4
   #        with:
   #          path: |
   #            ~/.cargo/registry
@@ -80,9 +80,9 @@ jobs:
       OS: ${{ matrix.OS }}
       FEATURES: ${{ matrix.FEATURES }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Cargo cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -203,7 +203,7 @@ jobs:
           mv ./target/$TARGET/release/$EXEC ./$EXEC
           tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $EXEC static
       - name: Archive artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: vnts
           path: |
@@ -216,14 +216,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: vnts
           path: ./artifacts
       - name: List
         run: find ./artifacts
       - name: Release
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v4
         with:
           repo_token: ${{ secrets.YOURTOKEN }}
           file: ./artifacts/*.tar.gz
