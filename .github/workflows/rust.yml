@@ -37,43 +37,43 @@ jobs:
         include:
           - TARGET: i686-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: ring-cipher,openssl-vendored,wss
+            FEATURES: ring-cipher,openssl-vendored,web
           - TARGET: x86_64-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: aarch64-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: armv7-unknown-linux-musleabihf
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: armv7-unknown-linux-musleabi
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: arm-unknown-linux-musleabihf
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: arm-unknown-linux-musleabi
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: x86_64-apple-darwin
             OS: macos-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: aarch64-apple-darwin
             OS: macos-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: i686-pc-windows-msvc
             OS: windows-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: x86_64-pc-windows-msvc
             OS: windows-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: mipsel-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
           - TARGET: mips-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: ring-cipher,wss
+            FEATURES: ring-cipher,web
 
     runs-on: ${{ matrix.OS }}
     env:
