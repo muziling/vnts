@@ -247,14 +247,13 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: vnts
           path: ./artifacts
       - name: List
         run: find ./artifacts
       - name: Release
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_token: ${{ secrets.YOURTOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./artifacts/*.tar.gz
           tag: ${{ github.ref }}
           overwrite: true
