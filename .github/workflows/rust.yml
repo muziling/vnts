@@ -34,45 +34,47 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # a list of all the targets
         include:
-          - TARGET: x86_64-unknown-linux-musl # test in an alpine container on a mac
+          - TARGET: i686-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: ring-cipher,web
-          - TARGET: aarch64-unknown-linux-musl # tested on aws t4g.nano in alpine container
+            FEATURES: ring-cipher,openssl-vendored,wss
+          - TARGET: x86_64-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal,web
-          - TARGET: armv7-unknown-linux-musleabihf # raspberry pi 2-3-4, not tested
+            FEATURES: ring-cipher,wss
+          - TARGET: aarch64-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal,web
-          - TARGET: armv7-unknown-linux-musleabi # raspberry pi 2-3-4, not tested
+            FEATURES: ring-cipher,wss
+          - TARGET: armv7-unknown-linux-musleabihf
             OS: ubuntu-latest
-            FEATURES: normal,web
-          - TARGET: arm-unknown-linux-musleabihf # raspberry pi 0-1, not tested
+            FEATURES: ring-cipher,wss
+          - TARGET: armv7-unknown-linux-musleabi
             OS: ubuntu-latest
-            FEATURES: normal,web
-          - TARGET: arm-unknown-linux-musleabi # raspberry pi 0-1, not tested
+            FEATURES: ring-cipher,wss
+          - TARGET: arm-unknown-linux-musleabihf
             OS: ubuntu-latest
-            FEATURES: normal,web
-          - TARGET: x86_64-apple-darwin # tested on a mac, is not properly signed so there are security warnings
+            FEATURES: ring-cipher,wss
+          - TARGET: arm-unknown-linux-musleabi
+            OS: ubuntu-latest
+            FEATURES: ring-cipher,wss
+          - TARGET: x86_64-apple-darwin
             OS: macos-latest
-            FEATURES: ring-cipher,web
-          - TARGET: aarch64-apple-darwin # tested on a mac, is not properly signed so there are security warnings
+            FEATURES: ring-cipher,wss
+          - TARGET: aarch64-apple-darwin
             OS: macos-latest
-            FEATURES: ring-cipher,web
-          - TARGET: i686-pc-windows-msvc # tested on a windows machine
+            FEATURES: ring-cipher,wss
+          - TARGET: i686-pc-windows-msvc
             OS: windows-latest
-            FEATURES: ring-cipher,web
-          - TARGET: x86_64-pc-windows-msvc # tested on a windows machine
+            FEATURES: ring-cipher,wss
+          - TARGET: x86_64-pc-windows-msvc
             OS: windows-latest
-            FEATURES: ring-cipher,web
-          - TARGET: mipsel-unknown-linux-musl # openwrt
+            FEATURES: ring-cipher,wss
+          - TARGET: mipsel-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal,web
-          - TARGET: mips-unknown-linux-musl # openwrt
+            FEATURES: ring-cipher,wss
+          - TARGET: mips-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal
-    # needs: test
+            FEATURES: ring-cipher,wss
+
     runs-on: ${{ matrix.OS }}
     env:
       NAME: vnts # change with the name of your project
@@ -88,18 +90,32 @@ jobs:
             ~/.cargo/registry
             ./target
           key: build-cargo-registry-${{matrix.TARGET}}
+      - name: Use strawberry perl
+        if: startsWith(matrix.OS, 'windows')
+        run: echo OPENSSL_SRC_PERL=C:/Strawberry/perl/bin/perl >> $GITHUB_ENV
       - name: List
         run: find ./
-      - name: Install and configure dependencies
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+      - name: Verify Rust version
         run: |
-          # dependencies are only needed on ubuntu as that's the only place where
-          # we make cross-compilation
-          if [[ $OS =~ ^ubuntu.*$ ]]; then
-            sudo apt-get update && sudo apt-get install -qq crossbuild-essential-arm64 crossbuild-essential-armhf musl-tools
-            #  curl -s musl.cc | grep mipsel
+          rustc --version
+          cargo --version
+      - name: Install dependencies on Ubuntu
+        if: startsWith(matrix.OS, 'ubuntu')
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang llvm libc6-dev-i386 \
+            crossbuild-essential-arm64 crossbuild-essential-armhf musl-tools libboost-all-dev libc6-dev wget tar
+
+          # Install musl cross toolchains if needed
             case $TARGET in 
               mipsel-unknown-linux-musl)
                 MUSL_URI=mipsel-linux-muslsf-cross
+              URL=mipsel-linux-muslsf
                 ;;
               aarch64-unknown-linux-musl)
                 MUSL_URI=aarch64-linux-musl-cross
@@ -118,42 +134,44 @@ jobs:
                 ;;     
               mips-unknown-linux-musl)
                 MUSL_URI=mips-linux-muslsf-cross
+              URL=mips-linux-muslsf
                 ;;
+            i686-unknown-linux-musl)
+              MUSL_URI=i686-linux-musl-cross
+              ;;
             esac
-            if [[ $TARGET =~ ^mips.*$ ]]; then
-              # mips平台使用1.71.1版本
-              rustup install 1.71.1
-              rustup default 1.71.1  
-            fi
+
             if [  -n "$MUSL_URI" ]; then
               mkdir -p /opt/musl_gcc
               wget -c https://github.com/rustp2p/musl-cross/releases/download/0.0.1/$MUSL_URI.tgz -P /opt/musl_gcc/
               tar zxf /opt/musl_gcc/$MUSL_URI.tgz -C /opt/musl_gcc/
               sudo ln -s /opt/musl_gcc/$MUSL_URI/bin/*gcc /usr/bin/
+          fi
+          if [[ $TARGET =~ ^mips.*$ ]]; then
+            cd /opt/musl_gcc/${URL}-cross/lib/gcc/${URL}/11.2.1
+            cp libgcc_eh.a libunwind.a
+            rustup toolchain install nightly-x86_64-unknown-linux-gnu
+            rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+            RUST_LIB_SRC=$HOME/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/
+            if [[ -f $RUST_LIB_SRC/library/Cargo.lock && ! -f $RUST_LIB_SRC/Cargo.lock ]]; then 
+               cp -f $RUST_LIB_SRC/library/Cargo.lock $RUST_LIB_SRC/Cargo.lock
             fi
           fi
 
-          # some additional configuration for cross-compilation on linux
+           rustup -V
+      - name: Configure cargo for cross-compilation
+        run: |
           cat >>~/.cargo/config <<EOF
           [target.x86_64-unknown-linux-musl]
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-          [target.aarch64-unknown-linux-gnu]
-          linker = "aarch64-linux-gnu-gcc"
-          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
           [target.aarch64-unknown-linux-musl]
           linker = "aarch64-linux-musl-gcc"
-          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-          [target.armv7-unknown-linux-gnueabihf]
-          linker = "arm-linux-gnueabihf-gcc"
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
           [target.armv7-unknown-linux-musleabihf]
           linker = "armv7l-linux-musleabihf-gcc"
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
           [target.armv7-unknown-linux-musleabi]
           linker = "armv7m-linux-musleabi-gcc"
-          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-          [target.arm-unknown-linux-gnueabihf]
-          linker = "arm-linux-gnueabihf-gcc"
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
           [target.arm-unknown-linux-musleabihf]
           linker = "arm-linux-musleabihf-gcc"
@@ -162,11 +180,17 @@ jobs:
           linker = "arm-linux-musleabi-gcc"
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
           [target.mipsel-unknown-linux-musl]
-          linker = "mipsel-linux-musl-gcc"
-          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          linker = "mipsel-linux-muslsf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols","-C", "link-arg=-static",
+          "-C", "relocation-model=static","-C", "link-arg=-no-pie","--cfg", "compiler_builtins_no_debug",
+          "-L", "/opt/musl_gcc/mipsel-linux-muslsf-cross/mipsel-linux-muslsf/lib",
+          "-L", "/opt/musl_gcc/mipsel-linux-muslsf-cross/lib/gcc/mipsel-linux-muslsf/11.2.1"]
           [target.mips-unknown-linux-musl]
-          linker = "mips-linux-musl-gcc"
-          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          linker = "mips-linux-muslsf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols","-C", "link-arg=-static",
+          "-C", "relocation-model=static","-C", "link-arg=-no-pie","--cfg", "compiler_builtins_no_debug",
+          "-L", "/opt/musl_gcc/mips-linux-muslsf-cross/mips-linux-muslsf/lib",
+          "-L", "/opt/musl_gcc/mips-linux-muslsf-cross/lib/gcc/mips-linux-muslsf/11.2.1"]
           [target.x86_64-pc-windows-msvc]
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]    
           [target.i686-pc-windows-msvc]
@@ -176,14 +200,19 @@ jobs:
           [target.aarch64-apple-darwin]
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]     
           [target.i686-unknown-linux-musl]
-          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]    
-          [target.x86_64-unknown-linux-gnu]
+          linker = "i686-linux-musl-gcc"
           rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
           EOF
       - name: Install rust target
+        if: ${{ ! endsWith(matrix.TARGET, 'freebsd') &&  ! startsWith(matrix.TARGET, 'mips') }}
         run: rustup target add $TARGET
       - name: Run build
-        run: cargo build --release --verbose --target $TARGET --features $FEATURES
+        run: |
+          if [[ $TARGET =~ ^mips.*$ ]]; then
+            cargo +nightly build --release --verbose --target $TARGET --target $TARGET -Z build-std=std,panic_abort --features $FEATURES
+          else
+            cargo build --release --verbose --target $TARGET --features $FEATURES
+          fi
       - name: List target
         run: find ./target
       - name: Compress
