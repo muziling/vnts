@@ -205,7 +205,7 @@ jobs:
       - name: Archive artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vnts
+          name: vnts-${{ matrix.TARGET }}
           path: |
             ./artifacts
 
