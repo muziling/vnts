@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 pub fn log_init(log_name: &str) {
-    let path = PathBuf::from("logs");
+    let path = PathBuf::from("/var/log/vnts2");
     if !path.exists() {
         let _ = std::fs::create_dir(&path);
     }
